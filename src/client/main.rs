@@ -1,3 +1,7 @@
+// ToDo: 
+// [ ] get hostname from cli args
+// [ ]
+
 use std::{io::Write, net::{IpAddr, TcpStream, UdpSocket}, thread::sleep, time::Duration};
 
 const PACKET_SIZE_BYTES : usize = 1494;
@@ -12,6 +16,7 @@ const AUDIO_BUFFER_SIZE_SAMPLES :usize = PACKET_SIZE_SAMPLES*((AUDIO_BUFFER_MIN_
 const AUDIO_BUFFER_SIZE_BYTES: usize = AUDIO_BUFFER_SIZE_SAMPLES * AUDIO_SAMPLE_SIZE_BYTES;
 const AUDIO_BUFFER_SIZE_PACKETS: usize  = AUDIO_BUFFER_SIZE_BYTES/PACKET_SIZE_BYTES;
 
+
 fn main() -> std::io::Result<()> {
     let mut raw_audio_buffer: [u8; AUDIO_BUFFER_SIZE_BYTES] = [0u8; AUDIO_BUFFER_SIZE_BYTES];
     
@@ -19,7 +24,7 @@ fn main() -> std::io::Result<()> {
     udp_socket.set_broadcast(false)?;
     println!("Binding to {:?}", udp_socket.local_addr().unwrap());
     
-    let mut tcp_socket = TcpStream::connect("192.168.8.139:8080")?;
+    let mut tcp_socket = TcpStream::connect("wt-61565680:8080")?;
     println!("Binding to {:?}", udp_socket.local_addr().unwrap());
     let mut sub_request : [u8; 8] = *b"audio:\0\0";
     sub_request[6..].copy_from_slice(&udp_socket.local_addr().unwrap().port().to_be_bytes());
@@ -54,7 +59,7 @@ fn main() -> std::io::Result<()> {
 
         //place in raw audio buffer
         current_index = packet_index as usize - start_index.unwrap();
-        if current_index == 100 {
+        if current_index == 0xFFFF {
             let mut sub_request : [u8; 10] = *b"unaudio:\0\0";
             sub_request[8..].copy_from_slice(&udp_socket.local_addr().unwrap().port().to_be_bytes());
             tcp_socket.write(&sub_request)?;
