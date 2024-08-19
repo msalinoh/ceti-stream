@@ -1,0 +1,74 @@
+use std::{io::Write, net::{IpAddr, TcpStream, UdpSocket}, thread::sleep, time::Duration};
+
+const PACKET_SIZE_BYTES : usize = 1494;
+const PACKET_SIZE_SAMPLES: usize = PACKET_SIZE_BYTES/AUDIO_SAMPLE_SIZE_BYTES;
+
+const AUDIO_BUFFER_SIZE_MS :usize = 60000;
+const AUDIO_SAMPLE_RATE_SPS: usize = 96000;
+const AUDIO_MAX_CHANNELS: usize = 3;
+const AUDIO_SAMPLE_SIZE_BYTES: usize = 2 * AUDIO_MAX_CHANNELS;
+const AUDIO_BUFFER_MIN_SIZE_SAMPLES :usize = AUDIO_BUFFER_SIZE_MS * AUDIO_SAMPLE_RATE_SPS / 1000;
+const AUDIO_BUFFER_SIZE_SAMPLES :usize = PACKET_SIZE_SAMPLES*((AUDIO_BUFFER_MIN_SIZE_SAMPLES + PACKET_SIZE_SAMPLES - 1) / PACKET_SIZE_SAMPLES);
+const AUDIO_BUFFER_SIZE_BYTES: usize = AUDIO_BUFFER_SIZE_SAMPLES * AUDIO_SAMPLE_SIZE_BYTES;
+const AUDIO_BUFFER_SIZE_PACKETS: usize  = AUDIO_BUFFER_SIZE_BYTES/PACKET_SIZE_BYTES;
+
+fn main() -> std::io::Result<()> {
+    let mut raw_audio_buffer: [u8; AUDIO_BUFFER_SIZE_BYTES] = [0u8; AUDIO_BUFFER_SIZE_BYTES];
+    
+    let udp_socket = UdpSocket::bind("0.0.0.0:0").expect("couldn't bind to address");
+    udp_socket.set_broadcast(false)?;
+    println!("Binding to {:?}", udp_socket.local_addr().unwrap());
+    
+    let mut tcp_socket = TcpStream::connect("192.168.8.139:8080")?;
+    println!("Binding to {:?}", udp_socket.local_addr().unwrap());
+    let mut sub_request : [u8; 8] = *b"audio:\0\0";
+    sub_request[6..].copy_from_slice(&udp_socket.local_addr().unwrap().port().to_be_bytes());
+    tcp_socket.write(&sub_request)?;
+    
+    let mut rx_buffer = [0; 1496];
+    let mut start_index : Option<usize> = None;
+    let mut current_index = 0;
+    
+    // tcp_socket.write(b"stop")?;
+    loop {
+        let size = udp_socket.recv(& mut rx_buffer).expect("couldn't recv");
+        if size <= 0 {
+            break;
+        }
+    
+        //check header
+        let packet_index = u16::from_be_bytes([rx_buffer[0], rx_buffer[1]]);
+        let packet_size = u16::from_be_bytes([rx_buffer[2], rx_buffer[3]]);
+        println!("Received packet {:?} with {:?} bytes", packet_index, packet_size);
+        //set buffer start index
+        if start_index.is_none() {
+            start_index = Some(packet_index as usize);
+        }
+    
+        assert_eq!(size, (packet_size as usize) + 4, "Size mismatch between packet size and received packet size");
+        if packet_size == 0 {
+            break;
+        }
+    
+    
+
+        //place in raw audio buffer
+        current_index = packet_index as usize - start_index.unwrap();
+        if current_index == 100 {
+            let mut sub_request : [u8; 10] = *b"unaudio:\0\0";
+            sub_request[8..].copy_from_slice(&udp_socket.local_addr().unwrap().port().to_be_bytes());
+            tcp_socket.write(&sub_request)?;
+            break;
+        }
+
+        if current_index == AUDIO_BUFFER_SIZE_PACKETS  {
+            start_index = Some(current_index);
+            break;
+        }
+        raw_audio_buffer[current_index .. current_index + packet_size as usize].copy_from_slice(&rx_buffer[4 .. 4 + packet_size as usize]);
+    }
+    sleep(Duration::from_secs(5));
+    tcp_socket.write(b"stop")?;
+    println!("Goodbye!!");
+    return Ok(());
+}       
