@@ -1,0 +1,102 @@
+use std::time::Duration;
+
+use libc::{c_char, c_int};
+
+pub const BATTERY_SHM_NAME : *const c_char = b"/battery_shm\0".as_ptr() as *const c_char;
+pub const BATTERY_SEM_NAME : *const c_char = b"/battery_sem\0".as_ptr() as *const c_char;
+pub const BATTERY_SAMPLING_PERIOD: Duration = Duration::from_secs(1);
+
+pub const LIGHT_SHM_NAME: *const c_char =  b"/light_shm".as_ptr() as *const c_char;
+pub const LIGHT_SEM_NAME: *const c_char =  b"/light_sem".as_ptr() as *const c_char;
+pub const LIGHT_SAMPLING_PERIOD: Duration = Duration::from_secs(1);
+
+pub const PRESSURE_SHM_NAME: *const c_char =  b"/pressure_shm".as_ptr() as *const c_char;
+pub const PRESSURE_SEM_NAME: *const c_char =  b"/pressure_sem".as_ptr() as *const c_char;
+pub const PRESSURE_SAMPLING_PERIOD: Duration = Duration::from_secs(1);
+
+pub const IMU_QUAT_SHM_NAME: *const c_char =  b"/imu_quat_shm".as_ptr() as *const c_char;
+pub const IMU_QUAT_SEM_NAME: *const c_char =  b"/imu_quat_sample_sem".as_ptr() as *const c_char;
+pub const IMU_QUATERNION_SAMPLE_PERIOD_US: Duration = Duration::from_millis(5); // rate for the computed orientation
+
+pub const IMU_ACCEL_SHM_NAME: *const c_char =  b"/imu_accel_shm".as_ptr() as *const c_char;
+pub const IMU_ACCEL_SEM_NAME: *const c_char =  b"/imu_accel_sample_sem".as_ptr() as *const c_char;
+pub const IMU_GYRO_SHM_NAME: *const c_char =  b"/imu_gyro_shm".as_ptr() as *const c_char;
+pub const IMU_GYRO_SEM_NAME: *const c_char =  b"/imu_gyro_sample_sem".as_ptr() as *const c_char;
+pub const IMU_MAG_SHM_NAME: *const c_char =  b"/imu_mag_shm".as_ptr() as *const c_char;
+pub const IMU_MAG_SEM_NAME: *const c_char =  b"/imu_mag_sample_sem".as_ptr() as *const c_char;
+pub const IMU_9DOF_SAMPLE_PERIOD_US: Duration = Duration::from_millis(2); // rate for the accelerometer/gyroscope/magnetometer
+
+#[repr(C)]
+pub struct CetiBatterySample{
+    pub sys_time_us: i64,
+    pub error: i32,
+    pub rtc_time_s: c_int,
+    pub cell_voltage_v: [f64; 2],
+    pub cell_temperature_c: [f64; 2],
+    pub current_ma: f64,
+    pub status: u16,
+    pub protection_alert: u16,
+}
+
+#[repr(C)]
+pub struct CetiImuQuatSample{
+    pub sys_time_us : i64,
+    pub reading_delay_us : i64,
+    pub rtc_time_s : c_int,
+    pub i : i16,
+    pub j : i16,
+    pub k : i16,
+    pub real : i16,
+    pub accuracy : i16,
+}
+
+#[repr(C)]
+pub struct CetiImuAccelSample{
+    pub sys_time_us : i64,
+    pub reading_delay_us : i64,
+    pub rtc_time_s : c_int,
+    pub x : i16,
+    pub y : i16,
+    pub z : i16,
+    pub accuracy : i16,
+}
+
+#[repr(C)]
+pub struct CetiImuGyroSample{
+    pub sys_time_us : i64,
+    pub reading_delay_us : i64,
+    pub rtc_time_s : c_int,
+    pub x : i16,
+    pub y : i16,
+    pub z : i16,
+    pub accuracy : i16,
+}
+
+#[repr(C)]
+pub struct CetiImuMagSample{
+    sys_time_us : i64,
+    reading_delay_us : i64,
+    rtc_time_s : c_int,
+    x : i16,
+    y : i16,
+    z : i16,
+    accuracy : i16,
+}
+
+#[repr(C)]
+pub struct CetiLightSample{
+    pub sys_time_us: i64,
+    pub rtc_time_s: c_int,
+    pub error: i32, 
+    pub visible: c_int,
+    pub infrared: c_int,
+}
+
+#[repr(C)]
+pub struct CetiPressureSample{
+    sys_time_us: i64,
+    rtc_time_s: c_int,
+    error: i32,
+    pressure_bar: f64,
+    temperature_c: f64,
+}
