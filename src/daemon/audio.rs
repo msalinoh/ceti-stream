@@ -46,7 +46,7 @@ pub fn tx_thread(
     println!("Server listening on {:?}", local_address);
     let mut buffer = [0; 1498];
 
-    let mut packet_index : u16 = 0;
+    let mut packet_index : u32 = 0;
     let mut stop = *stop_flag.lock().unwrap();
     println!("Accessing semaphore",);
     let mut paused = true;
@@ -100,8 +100,7 @@ pub fn tx_thread(
                 continue;
             }
             
-            buffer[0..2].copy_from_slice(&packet_index.to_be_bytes());
-            buffer[2..4].copy_from_slice(&(1494 as u16).to_be_bytes());
+            buffer[0..4].copy_from_slice(&packet_index.to_be_bytes());
 
             //copy audio into buffer
             //check if wrapped
