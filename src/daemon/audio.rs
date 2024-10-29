@@ -100,7 +100,7 @@ pub fn tx_thread(
                 continue;
             }
             
-            buffer[0..4].copy_from_slice(&packet_index.to_be_bytes());
+            buffer[0..4].copy_from_slice(&packet_index.to_le_bytes());
 
             //copy audio into buffer
             //check if wrapped

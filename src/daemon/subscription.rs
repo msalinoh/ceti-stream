@@ -1,8 +1,6 @@
 use std::io::{Read, Write};
-use std::net::{Shutdown, SocketAddr, TcpListener, TcpStream};
+use std::net::{SocketAddr, TcpListener};
 use std::sync::{Arc, Mutex};
-use std::thread::sleep;
-use std::time::Duration;
 
 pub fn tcp_handler(
     stop_flag : Arc<Mutex<bool>>,
@@ -49,30 +47,32 @@ pub fn tcp_handler(
                                     audio_subs.lock().unwrap().retain(|&addr| addr != socket_addr);
                                 }
                                 _ => {
-                                    stream.write(b"audio command options:\n");
-                                    stream.write(b"  subscribe <udp_port>\n");
-                                    stream.write(b"  unsubscribe <udp_port>\n");
+                                    let _ = stream.write (b"audio command options:\n");
+                                    let _ = stream.write (b"  subscribe <udp_port>\n");
+                                    let _ = stream.write (b"  unsubscribe <udp_port>\n");
                                 }
                             }
                         },
                         Some("battery") => {
                             match input.next() {
                                 Some("subscribe") => {
-                                    let port_number : u16 = input.next().unwrap().parse().unwrap();
+                                    let args = input.next().unwrap();
+                                    println!("{:?}", args);
+                                    let port_number : u16 = args.parse().unwrap();
                                     let socket_addr = SocketAddr::from((stream.peer_addr().unwrap().ip(), port_number));
                                     println!("{:?} was subscribed to battery stream", socket_addr);
-                                    audio_subs.lock().unwrap().push(socket_addr);
+                                    battery_subs.lock().unwrap().push(socket_addr);
                                 },
                                 Some("unsubscribe") => {
                                     let port_number : u16 = input.next().unwrap().parse().unwrap();
                                     let socket_addr = SocketAddr::from((stream.peer_addr().unwrap().ip(), port_number));
                                     println!("{:?} was unsubscribed to battery stream", socket_addr);
-                                    audio_subs.lock().unwrap().retain(|&addr| addr != socket_addr);
+                                    battery_subs.lock().unwrap().retain(|&addr| addr != socket_addr);
                                 }
                                 _ => {
-                                    stream.write(b"battery command options:\n");
-                                    stream.write(b"  subscribe <udp_port>\n");
-                                    stream.write(b"  unsubscribe <udp_port>\n");
+                                    let _ = stream.write (b"battery command options:\n");
+                                    let _ = stream.write (b"  subscribe <udp_port>\n");
+                                    let _ = stream.write (b"  unsubscribe <udp_port>\n");
                                 }
                             }
                         },
@@ -82,18 +82,18 @@ pub fn tcp_handler(
                                     let port_number : u16 = input.next().unwrap().parse().unwrap();
                                     let socket_addr = SocketAddr::from((stream.peer_addr().unwrap().ip(), port_number));
                                     println!("{:?} was subscribed to ecg stream", socket_addr);
-                                    audio_subs.lock().unwrap().push(socket_addr);
+                                    ecg_subs.lock().unwrap().push(socket_addr);
                                 },
                                 Some("unsubscribe") => {
                                     let port_number : u16 = input.next().unwrap().parse().unwrap();
                                     let socket_addr = SocketAddr::from((stream.peer_addr().unwrap().ip(), port_number));
                                     println!("{:?} was unsubscribed to ecg stream", socket_addr);
-                                    audio_subs.lock().unwrap().retain(|&addr| addr != socket_addr);
+                                    ecg_subs.lock().unwrap().retain(|&addr| addr != socket_addr);
                                 }
                                 _ => {
-                                    stream.write(b"ecg command options:\n");
-                                    stream.write(b"  subscribe <udp_port>\n");
-                                    stream.write(b"  unsubscribe <udp_port>\n");
+                                    let _ = stream.write (b"ecg command options:\n");
+                                    let _ = stream.write (b"  subscribe <udp_port>\n");
+                                    let _ = stream.write (b"  unsubscribe <udp_port>\n");
                                 }
                             }
                         },
@@ -112,9 +112,9 @@ pub fn tcp_handler(
                                     imu_quat_subs.lock().unwrap().retain(|&addr| addr != socket_addr);
                                 }
                                 _ => {
-                                    stream.write(b"imu_quat command options:\n");
-                                    stream.write(b"  subscribe <udp_port>\n");
-                                    stream.write(b"  unsubscribe <udp_port>\n");
+                                    let _ = stream.write (b"imu_quat command options:\n");
+                                    let _ = stream.write (b"  subscribe <udp_port>\n");
+                                    let _ = stream.write (b"  unsubscribe <udp_port>\n");
                                 }
                             }
                         },
@@ -133,9 +133,9 @@ pub fn tcp_handler(
                                     imu_accel_subs.lock().unwrap().retain(|&addr| addr != socket_addr);
                                 }
                                 _ => {
-                                    stream.write(b"imu_accel command options:\n");
-                                    stream.write(b"  subscribe <udp_port>\n");
-                                    stream.write(b"  unsubscribe <udp_port>\n");
+                                    let _ = stream.write (b"imu_accel command options:\n");
+                                    let _ = stream.write (b"  subscribe <udp_port>\n");
+                                    let _ = stream.write (b"  unsubscribe <udp_port>\n");
                                 }
                             }
                         },
@@ -154,30 +154,35 @@ pub fn tcp_handler(
                                     imu_gyro_subs.lock().unwrap().retain(|&addr| addr != socket_addr);
                                 }
                                 _ => {
-                                    stream.write(b"imu_gyro command options:\n");
-                                    stream.write(b"  subscribe <udp_port>\n");
-                                    stream.write(b"  unsubscribe <udp_port>\n");
+                                    let _ = stream.write (b"imu_gyro command options:\n");
+                                    let _ = stream.write (b"  subscribe <udp_port>\n");
+                                    let _ = stream.write (b"  unsubscribe <udp_port>\n");
                                 }
                             }
                         },
                         Some("imu_mag")=> {
                             match input.next() {
                                 Some("subscribe") => {
-                                    let port_number : u16 = input.next().unwrap().parse().unwrap();
+                                    let port_number = input.next().unwrap().parse::<u16>();
+                                    if port_number.is_err() {
+                                        let _ = stream.write (b"Error: bad port number\n");
+                                        continue;
+                                    }
+                                    let port_number = port_number.unwrap();
                                     let socket_addr = SocketAddr::from((stream.peer_addr().unwrap().ip(), port_number));
                                     println!("{:?} was subscribed to magnetometer stream", socket_addr);
-                                    imu_accel_subs.lock().unwrap().push(socket_addr);
+                                    imu_mag_subs.lock().unwrap().push(socket_addr);
                                 },
                                 Some("unsubscribe") => {
                                     let port_number : u16 = input.next().unwrap().parse().unwrap();
                                     let socket_addr = SocketAddr::from((stream.peer_addr().unwrap().ip(), port_number));
                                     println!("{:?} was unsubscribed to magnetometer stream", socket_addr);
-                                    imu_accel_subs.lock().unwrap().retain(|&addr| addr != socket_addr);
+                                    imu_mag_subs.lock().unwrap().retain(|&addr| addr != socket_addr);
                                 }
                                 _ => {
-                                    stream.write(b"imu_mag command options:\n");
-                                    stream.write(b"  subscribe <udp_port>\n");
-                                    stream.write(b"  unsubscribe <udp_port>\n");
+                                    let _ = stream.write (b"imu_mag command options:\n");
+                                    let _ = stream.write (b"  subscribe <udp_port>\n");
+                                    let _ = stream.write (b"  unsubscribe <udp_port>\n");
                                 }
                             }
                         },
@@ -187,18 +192,18 @@ pub fn tcp_handler(
                                     let port_number : u16 = input.next().unwrap().parse().unwrap();
                                     let socket_addr = SocketAddr::from((stream.peer_addr().unwrap().ip(), port_number));
                                     println!("{:?} was subscribed to ambient light sensor stream", socket_addr);
-                                    imu_accel_subs.lock().unwrap().push(socket_addr);
+                                    light_subs.lock().unwrap().push(socket_addr);
                                 },
                                 Some("unsubscribe") => {
                                     let port_number : u16 = input.next().unwrap().parse().unwrap();
                                     let socket_addr = SocketAddr::from((stream.peer_addr().unwrap().ip(), port_number));
                                     println!("{:?} was unsubscribed to ambient light sensor stream", socket_addr);
-                                    imu_accel_subs.lock().unwrap().retain(|&addr| addr != socket_addr);
+                                    light_subs.lock().unwrap().retain(|&addr| addr != socket_addr);
                                 }
                                 _ => {
-                                    stream.write(b"light command options:\n");
-                                    stream.write(b"  subscribe <udp_port>\n");
-                                    stream.write(b"  unsubscribe <udp_port>\n");
+                                    let _ = stream.write (b"light command options:\n");
+                                    let _ = stream.write (b"  subscribe <udp_port>\n");
+                                    let _ = stream.write (b"  unsubscribe <udp_port>\n");
                                 }
                             }
                         },
@@ -208,32 +213,32 @@ pub fn tcp_handler(
                                     let port_number : u16 = input.next().unwrap().parse().unwrap();
                                     let socket_addr = SocketAddr::from((stream.peer_addr().unwrap().ip(), port_number));
                                     println!("{:?} was subscribed to pressure sensor stream", socket_addr);
-                                    imu_accel_subs.lock().unwrap().push(socket_addr);
+                                    pressure_subs.lock().unwrap().push(socket_addr);
                                 },
                                 Some("unsubscribe") => {
                                     let port_number : u16 = input.next().unwrap().parse().unwrap();
                                     let socket_addr = SocketAddr::from((stream.peer_addr().unwrap().ip(), port_number));
                                     println!("{:?} was unsubscribed to pressure sensor stream", socket_addr);
-                                    imu_accel_subs.lock().unwrap().retain(|&addr| addr != socket_addr);
+                                    pressure_subs.lock().unwrap().retain(|&addr| addr != socket_addr);
                                 }
                                 _ => {
-                                    stream.write(b"pressure command options:\n");
-                                    stream.write(b"  subscribe <udp_port>\n");
-                                    stream.write(b"  unsubscribe <udp_port>\n");
+                                    let _ = stream.write (b"pressure command options:\n");
+                                    let _ = stream.write (b"  subscribe <udp_port>\n");
+                                    let _ = stream.write (b"  unsubscribe <udp_port>\n");
                                 }
                             }
                         },
                         _ => {
-                            stream.write(b"command options:\n");
-                            stream.write(b"  audio     - modify audio subscription\n");
-                            stream.write(b"  batery    - modify battery subscription\n");
-                            stream.write(b"  imu_quat  - modify imu quaternion subscription\n");
-                            stream.write(b"  imu_accel - modify imu accelerometer subscription\n");
-                            stream.write(b"  imu_gyro  - modify imu gyroscope subscription\n");
-                            stream.write(b"  imu_mag   - modify imu magnetometer subscription\n");
-                            stream.write(b"  light     - modify ambient light sensor subscription\n");
-                            stream.write(b"  pressure  - modify pressure sensor subscription\n");
-                            stream.write(b"  stop      - stop server\n");
+                            let _ = stream.write (b"command options:\n");
+                            let _ = stream.write (b"  audio     - modify audio subscription\n");
+                            let _ = stream.write (b"  batery    - modify battery subscription\n");
+                            let _ = stream.write (b"  imu_quat  - modify imu quaternion subscription\n");
+                            let _ = stream.write (b"  imu_accel - modify imu accelerometer subscription\n");
+                            let _ = stream.write (b"  imu_gyro  - modify imu gyroscope subscription\n");
+                            let _ = stream.write (b"  imu_mag   - modify imu magnetometer subscription\n");
+                            let _ = stream.write (b"  light     - modify ambient light sensor subscription\n");
+                            let _ = stream.write (b"  pressure  - modify pressure sensor subscription\n");
+                            let _ = stream.write (b"  stop      - stop server\n");
                         },
                     }
                 }
