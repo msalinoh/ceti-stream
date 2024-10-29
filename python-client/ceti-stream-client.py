@@ -1,6 +1,7 @@
 import socket
 import ctypes
 
+#ToDo: set to pi's lan ip
 pi_ip = '10.0.0.161'
 
 # c_type definition
