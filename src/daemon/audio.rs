@@ -124,7 +124,7 @@ pub fn tx_thread(
             if !paused {
                 paused = true;
             }
-            println!("Waiting on subscribers");
+            // println!("Waiting on subscribers");
             sleep(Duration::from_secs(2));
         }
         //update stop flag

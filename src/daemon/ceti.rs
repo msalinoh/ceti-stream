@@ -26,6 +26,7 @@ pub const IMU_MAG_SHM_NAME: *const c_char =  b"/imu_mag_shm".as_ptr() as *const 
 pub const IMU_MAG_SEM_NAME: *const c_char =  b"/imu_mag_sample_sem".as_ptr() as *const c_char;
 pub const IMU_9DOF_SAMPLE_PERIOD_US: Duration = Duration::from_millis(2); // rate for the accelerometer/gyroscope/magnetometer
 
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub struct CetiBatterySample{
     pub sys_time_us: i64,
@@ -34,6 +35,7 @@ pub struct CetiBatterySample{
     pub cell_voltage_v: [f64; 2],
     pub cell_temperature_c: [f64; 2],
     pub current_ma: f64,
+    pub state_of_charge: f64,
     pub status: u16,
     pub protection_alert: u16,
 }

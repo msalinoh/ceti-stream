@@ -86,7 +86,7 @@ impl ForwardThread {
                 
                 //sleep until next sample 
                 stop = *stop_flag.lock().unwrap();
-                if(stop){
+                if stop {
                     let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
                     let elapsed_time = now - last_timestamp;
                     if elapsed_time < self.sample_period_us {
