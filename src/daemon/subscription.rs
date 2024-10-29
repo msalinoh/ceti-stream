@@ -231,7 +231,7 @@ pub fn tcp_handler(
                         _ => {
                             let _ = stream.write (b"command options:\n");
                             let _ = stream.write (b"  audio     - modify audio subscription\n");
-                            let _ = stream.write (b"  batery    - modify battery subscription\n");
+                            let _ = stream.write (b"  battery    - modify battery subscription\n");
                             let _ = stream.write (b"  imu_quat  - modify imu quaternion subscription\n");
                             let _ = stream.write (b"  imu_accel - modify imu accelerometer subscription\n");
                             let _ = stream.write (b"  imu_gyro  - modify imu gyroscope subscription\n");
