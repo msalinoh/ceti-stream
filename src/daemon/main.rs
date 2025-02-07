@@ -102,40 +102,45 @@ fn main() -> std::io::Result<()>{
             thread::spawn(move || audio::tx_thread(sub_addr, stop_flag))
         },
         {
+            let sub_addr = ecg_sub_address.clone();
+            let stop_flag = stop_flag.clone();
+            thread::spawn(move || audio::tx_thread(sub_addr, stop_flag))
+        },
+        {
             let sub_addr = battery_sub_address.clone();
             let stop_flag = stop_flag.clone();
             thread::spawn(move ||  BATTERY_FORWARDER.create()(sub_addr, stop_flag))
         },
-        // {
-        //     let sub_addr = imu_quat_sub_address.clone();
-        //     let stop_flag = stop_flag.clone();
-        //     thread::spawn(move ||  IMU_QUAT_FORWARDER.create()(sub_addr, stop_flag))
-        // },
-        // {
-        //     let sub_addr = imu_accel_sub_address.clone();
-        //     let stop_flag = stop_flag.clone();
-        //     thread::spawn(move ||  IMU_ACCEL_FORWARDER.create()(sub_addr, stop_flag))
-        // },
-        // {
-        //     let sub_addr = imu_gyro_sub_address.clone();
-        //     let stop_flag = stop_flag.clone();
-        //     thread::spawn(move ||  IMU_GYRO_FORWARDER.create()(sub_addr, stop_flag))
-        // },
-        // {
-        //     let sub_addr = imu_mag_sub_address.clone();
-        //     let stop_flag = stop_flag.clone();
-        //     thread::spawn(move ||  IMU_MAG_FORWARDER.create()(sub_addr, stop_flag))
-        // },
-        // {
-        //     let sub_addr = light_sub_address.clone();
-        //     let stop_flag = stop_flag.clone();
-        //     thread::spawn(move ||  LIGHT_FORWARDER.create()(sub_addr, stop_flag))
-        // },
-        // {
-        //     let sub_addr = pressure_sub_address.clone();
-        //     let stop_flag = stop_flag.clone();
-        //     thread::spawn(move ||  PRESSURE_FORWARDER.create()(sub_addr, stop_flag))
-        // },
+        {
+            let sub_addr = imu_quat_sub_address.clone();
+            let stop_flag = stop_flag.clone();
+            thread::spawn(move ||  IMU_QUAT_FORWARDER.create()(sub_addr, stop_flag))
+        },
+        {
+            let sub_addr = imu_accel_sub_address.clone();
+            let stop_flag = stop_flag.clone();
+            thread::spawn(move ||  IMU_ACCEL_FORWARDER.create()(sub_addr, stop_flag))
+        },
+        {
+            let sub_addr = imu_gyro_sub_address.clone();
+            let stop_flag = stop_flag.clone();
+            thread::spawn(move ||  IMU_GYRO_FORWARDER.create()(sub_addr, stop_flag))
+        },
+        {
+            let sub_addr = imu_mag_sub_address.clone();
+            let stop_flag = stop_flag.clone();
+            thread::spawn(move ||  IMU_MAG_FORWARDER.create()(sub_addr, stop_flag))
+        },
+        {
+            let sub_addr = light_sub_address.clone();
+            let stop_flag = stop_flag.clone();
+            thread::spawn(move ||  LIGHT_FORWARDER.create()(sub_addr, stop_flag))
+        },
+        {
+            let sub_addr = pressure_sub_address.clone();
+            let stop_flag = stop_flag.clone();
+            thread::spawn(move ||  PRESSURE_FORWARDER.create()(sub_addr, stop_flag))
+        },
     ];
 
     let subscription_thread = {

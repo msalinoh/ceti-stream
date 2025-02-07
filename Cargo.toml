@@ -8,13 +8,15 @@ edition = "2021"
 [dependencies]
 libc = "0.2.158"
 
+[dev-dependencies]
+rodio = "0.20.1"
+
 [[bin]]
 name = "daemon"
 path = "src/daemon/main.rs"
 
-[[bin]]
+[[example]]
 name = "client"
-path = "src/client/main.rs"
 
 [[bin]]
 name = "hello"

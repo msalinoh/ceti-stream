@@ -2,7 +2,12 @@
 // [ ] get hostname from cli args
 // [ ]
 
-use std::{io::Write, net::{IpAddr, TcpStream, UdpSocket}, thread::sleep, time::Duration};
+use std::io::Write;
+use std::net::{IpAddr, TcpStream, UdpSocket};
+use std::thread::sleep;
+use std::time::Duration;
+use rodio::{OutputStream, Sink};
+use rodio::buffer::SamplesBuffer;
 
 const PACKET_SIZE_BYTES : usize = 1494;
 const PACKET_SIZE_SAMPLES: usize = PACKET_SIZE_BYTES/AUDIO_SAMPLE_SIZE_BYTES;
@@ -18,39 +23,47 @@ const AUDIO_BUFFER_SIZE_PACKETS: usize  = AUDIO_BUFFER_SIZE_BYTES/PACKET_SIZE_BY
 
 
 fn main() -> std::io::Result<()> {
-    let mut raw_audio_buffer: [u8; AUDIO_BUFFER_SIZE_BYTES] = [0u8; AUDIO_BUFFER_SIZE_BYTES];
+    let (_stream, stream_handle) = OutputStream::try_default().unwrap();
+    let sink = Sink::try_new(&stream_handle).unwrap();
+
+    // let mut raw_audio_buffer: [u8; AUDIO_BUFFER_SIZE_BYTES] = [0u8; AUDIO_BUFFER_SIZE_BYTES];
     
     let udp_socket = UdpSocket::bind("0.0.0.0:0").expect("couldn't bind to address");
     udp_socket.set_broadcast(false)?;
     println!("Binding to {:?}", udp_socket.local_addr().unwrap());
     
-    let mut tcp_socket = TcpStream::connect("wt-61565680:8080")?;
+    let mut tcp_socket = TcpStream::connect("10.0.0.50:8080")?;
     println!("Binding to {:?}", udp_socket.local_addr().unwrap());
-    let mut sub_request : [u8; 8] = *b"audio:\0\0";
-    sub_request[6..].copy_from_slice(&udp_socket.local_addr().unwrap().port().to_be_bytes());
-    tcp_socket.write(&sub_request)?;
+    // let mut sub_request = String::from("audio subscribe ");
+    // sub_request.push_str(&udp_socket.local_addr().unwrap().port().to_string());
+    // sub_request.push(' ');
+
+    // println!("{:?}\n", sub_request);
+    // tcp_socket.write(&sub_request.into_bytes())?;
+    tcp_socket.write_fmt(format_args!("audio subscribe {:?} ", udp_socket.local_addr().unwrap().port()))?;
     
     let mut rx_buffer = [0; 1496];
     let mut start_index : Option<usize> = None;
     let mut current_index = 0;
     
     // tcp_socket.write(b"stop")?;
+    println!("Starting loop");
     loop {
         let size = udp_socket.recv(& mut rx_buffer).expect("couldn't recv");
         if size <= 0 {
             break;
         }
-    
+         
         //check header
-        let packet_index = u16::from_be_bytes([rx_buffer[0], rx_buffer[1]]);
-        let packet_size = u16::from_be_bytes([rx_buffer[2], rx_buffer[3]]);
+        let packet_index = u32::from_le_bytes([rx_buffer[0], rx_buffer[1], rx_buffer[2], rx_buffer[3]]);
+        let packet_size = size - 4;
         println!("Received packet {:?} with {:?} bytes", packet_index, packet_size);
         //set buffer start index
         if start_index.is_none() {
             start_index = Some(packet_index as usize);
         }
     
-        assert_eq!(size, (packet_size as usize) + 4, "Size mismatch between packet size and received packet size");
+        //assert_eq!(size, (packet_size as usize) + 4, "Size mismatch between packet size and received packet size");
         if packet_size == 0 {
             break;
         }
@@ -70,8 +83,17 @@ fn main() -> std::io::Result<()> {
             start_index = Some(current_index);
             break;
         }
-        raw_audio_buffer[current_index .. current_index + packet_size as usize].copy_from_slice(&rx_buffer[4 .. 4 + packet_size as usize]);
+        let processed_audio : Vec<i16> = rx_buffer[4 .. 4 + packet_size as usize]
+            .chunks_exact(2)
+            .map(|b| {i16::from_be_bytes([b[0], b[1]])})
+            .map(|s| {s.saturating_mul(4)})
+            .collect();
+        let audio_source = SamplesBuffer::new(3, 96000, processed_audio);
+        
+        //append to sink
+        sink.append(audio_source);
     }
+
     sleep(Duration::from_secs(5));
     tcp_socket.write(b"stop")?;
     println!("Goodbye!!");
