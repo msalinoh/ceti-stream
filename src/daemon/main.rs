@@ -104,7 +104,7 @@ fn main() -> std::io::Result<()>{
         {
             let sub_addr = ecg_sub_address.clone();
             let stop_flag = stop_flag.clone();
-            thread::spawn(move || audio::tx_thread(sub_addr, stop_flag))
+            thread::spawn(move || ecg::tx_thread(sub_addr, stop_flag))
         },
         {
             let sub_addr = battery_sub_address.clone();

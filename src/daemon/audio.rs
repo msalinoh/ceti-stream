@@ -76,7 +76,7 @@ pub fn tx_thread(
                     write_offset = page * AUDIO_BUFFER_SIZE_BYTES + block*AUDIO_BUFFER_BLOCK_SIZE_BYTES;
                 }
 
-                println!("Offsets set to {:} and {:} [{:}][{:}]",read_offset, write_offset, page, block);
+                println!("Audio Offsets set to {:} and {:} [{:}][{:}]",read_offset, write_offset, page, block);
                 paused = false;
             }
             let mut remaining_bytes = 1494;
@@ -94,7 +94,7 @@ pub fn tx_thread(
                     let block = unsafe {(*audio_addr).block as usize};
                     write_offset = page * AUDIO_BUFFER_SIZE_BYTES + block*AUDIO_BUFFER_BLOCK_SIZE_BYTES;
                     if old_write != write_offset {
-                        println!("Offsets set to {:} and {:} [{:}][{:}]",read_offset, write_offset, page, block);
+                        println!("Audio Offsets set to {:} and {:} [{:}][{:}]",read_offset, write_offset, page, block);
                     }
                 }
                 continue;

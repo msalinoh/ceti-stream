@@ -17,6 +17,7 @@ const ECG_BUFFER_LENGTH: usize = 1000;
 
 const UDP_PACKET_SIZE_MAX: usize = 1500;
 
+#[derive(Debug, Clone, Copy)]
 #[repr(C)]
 struct CetiEcgBuffer {
     page: c_int,
@@ -69,6 +70,9 @@ pub fn tx_thread(
     let mut read_offset = 0;
     let mut write_offset = 0;
 
+    let mut count = 0;
+
+    println!("starting loop");
     while !stop {
         //check if any udp sockets are subscribed to audio stream.
         let dest_list = {(*dest_addr.lock().unwrap()).clone()};
@@ -78,23 +82,23 @@ pub fn tx_thread(
 
                 // wait for new ecg sample to be posted
                 // Note: This may wait forever better to include timeout
+                println!("waiting on semaphore 2");
                 unsafe{let _res = sem_wait(ecg_sem);};
-                let page = unsafe {(*ecg_addr).page as usize};
-                let sample = unsafe {(*ecg_addr).sample as usize};
+                let page = unsafe {(*ecg_addr).page} as usize;
+                let sample = unsafe {(*ecg_addr).sample} as usize;
                 write_offset = page * ECG_BUFFER_LENGTH + sample;   
-                read_offset = write_offset;
+                read_offset = page * ECG_BUFFER_LENGTH;
                 paused = false;
-                break;
-            }
-
-            // wait for new data
-            while read_offset == write_offset {
+                // println!("Offsets set to {:} and {:} [{:}][{:}]",read_offset, write_offset, page, sample);
+            } else if read_offset == write_offset {
+                println!("waiting on semaphore 1");
                 unsafe{let _res = sem_wait(ecg_sem);}; //get more data
                 //wait for more data if not enough in buffer
-                let page = unsafe {(*ecg_addr).page as usize};
-                let sample = unsafe {(*ecg_addr).sample as usize};
+                let page = unsafe {(*ecg_addr).page} as usize;
+                let sample = unsafe {(*ecg_addr).sample} as usize;
                 write_offset = page * ECG_BUFFER_LENGTH + sample;
-                println!("Offsets set to {:} and {:} [{:}][{:}]",read_offset, write_offset, page, sample);
+                // println!("{:?}", unsafe{(*ecg_addr).sample});
+                // println!("Offsets set to {:} and {:} [{:}][{:}]",read_offset, write_offset, page, sample);
             }
             
             //calculate number of new samples in buffer 
@@ -104,6 +108,7 @@ pub fn tx_thread(
                 write_offset + (ECG_BUFFER_LENGTH * ECG_NUM_BUFFER) - read_offset
             };
 
+            println!("transforming data");
             // transform ecg buffers into samples
             let mut samples : Vec<CetiEcgSample> = Vec::with_capacity(sample_count); 
             while read_offset != write_offset {
@@ -115,11 +120,13 @@ pub fn tx_thread(
                     leads_off_readings_n: unsafe{(*ecg_addr).leads_off_readings_n[read_offset]},
                     sample_indexes: unsafe{(*ecg_addr).sample_indexes[read_offset]},
                 };
+
                 samples.push(current_sample);
-                read_offset = (read_offset) + 1 % (ECG_BUFFER_LENGTH * ECG_NUM_BUFFER);
+                read_offset = ((read_offset) + 1) % (ECG_BUFFER_LENGTH * ECG_NUM_BUFFER);
             }
 
-            // generate byte packages            
+            // generate byte packages     
+            println!("transmitting data");
             const SAMPLES_PER_PACKET : usize = UDP_PACKET_SIZE_MAX/size_of::<CetiEcgSample>();
             let sample_iter = &mut samples.iter();
             while sample_count != 0 {
@@ -137,6 +144,10 @@ pub fn tx_thread(
                     .collect::<Vec<u8>>()
                     .try_into()
                     .unwrap();
+                if count == 0 {
+                    println!("{:?}", &buffer[..32]);
+                    count = 1;
+                }
                 
                 //send to all subscribed upd addresses
                 for dest_addr in dest_list.iter(){
@@ -144,6 +155,7 @@ pub fn tx_thread(
                 }
                 sample_count = sample_count- sample_count.min(SAMPLES_PER_PACKET);
             }
+            break;
         } else {
             // there is noone subscribed to the udp stream
             if !paused {
