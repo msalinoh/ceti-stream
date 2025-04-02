@@ -14,7 +14,7 @@ writeline(tcp_socket, audio_sub_request);
 % loop currently only grabs 20 seconds of data
 
 for i=1:1:20000
-    % wait for at least a sample
+    % wait for atleast a sample
     while (udp_socket.NumBytesAvailable < 16)
         pause(0.1);
     end
