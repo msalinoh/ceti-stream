@@ -30,7 +30,7 @@ pub fn tcp_handler(
                     match input.next() {
                         Some("stop") => {
                             println!("Stopping server");
-                            *stop_flag.lock().unwrap() = true;
+                            // *stop_flag.lock().unwrap() = true;
                         },
                         Some("audio") => {
                             match input.next() {

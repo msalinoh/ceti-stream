@@ -56,16 +56,16 @@ pub fn tx_thread(
 
                 // wait for new ecg sample to be posted
                 // Note: This may wait forever better to include timeout
-                println!("waiting on semaphore 2");
                 unsafe{let _res = sem_wait(ecg_sem);};
                 let page = unsafe {(*ecg_addr).page} as usize;
                 let sample = unsafe {(*ecg_addr).sample} as usize;
                 write_offset = page * ECG_BUFFER_LENGTH + sample;   
                 read_offset = page * ECG_BUFFER_LENGTH;
                 paused = false;
+                println!("Starting ECG Stream");
+
                 // println!("Offsets set to {:} and {:} [{:}][{:}]",read_offset, write_offset, page, sample);
             } else if read_offset == write_offset {
-                println!("waiting on semaphore 1");
                 unsafe{let _res = sem_wait(ecg_sem);}; //get more data
                 //wait for more data if not enough in buffer
                 let page = unsafe {(*ecg_addr).page} as usize;
@@ -90,12 +90,11 @@ pub fn tx_thread(
                 
                 
                 // send packet
-                println!("Generating packet");
                 let data = &unsafe{(*ecg_addr).data};
                 let ecg_read_ptr = (&data[read_offset]) as *const CetiEcgSample;
                 let packet : &[u8] = unsafe { std::slice::from_raw_parts(ecg_read_ptr as *const u8, size_of::<CetiEcgSample>()*sample_count)};
+
                 //send to all subscribed upd addresses
-                println!("transmitting data");
                 for dest_addr in dest_list.iter(){
                     socket.send_to(packet, dest_addr)?;
                 }
@@ -103,14 +102,11 @@ pub fn tx_thread(
                 // advance read head
                 read_offset = (read_offset + sample_count) % (ECG_NUM_BUFFER * ECG_BUFFER_LENGTH);
             }
-            break;
-
         } else {
             // there is noone subscribed to the udp stream
             if !paused {
                 paused = true;
             }
-            println!("Waiting on subscribers");
             sleep(Duration::from_secs(1));
         }
         //update stop flag
