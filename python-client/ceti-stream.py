@@ -21,6 +21,17 @@ class CetiAudioDatagram(ctypes.Structure):
         #('audio_data', ((ctypes.c_uint8*2)*3)*249), 
     )
 
+class CetiEcgSample(ctypes.Structue):
+    _fields_ = (
+        ('sys_time_us', ctypes.c_uint64),
+        ('sample_index', ctypes.c_uint64),
+        ('error', ctypes.c_int32),
+        ('rtc_time_s', ctypes.c_uint32),
+        ('ecg_reading', ctypes.c_int32),
+        ('leads_off_reading_n', ctypes.c_uint16),
+        ('leads_off_reading_p', ctypes.c_uint16),
+)
+
 class CetiImuQuatSample(ctypes.Structure):
     _fields_ = (
         ('sys_time_us', ctypes.c_int64),
