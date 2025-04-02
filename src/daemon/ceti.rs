@@ -6,6 +6,9 @@ pub const BATTERY_SHM_NAME : *const c_char = b"/battery_shm\0".as_ptr() as *cons
 pub const BATTERY_SEM_NAME : *const c_char = b"/battery_sem\0".as_ptr() as *const c_char;
 pub const BATTERY_SAMPLING_PERIOD: Duration = Duration::from_secs(1);
 
+pub const ECG_NUM_BUFFER: usize = 2;
+pub const ECG_BUFFER_LENGTH: usize = 1000;
+
 pub const LIGHT_SHM_NAME: *const c_char =  b"/light_shm".as_ptr() as *const c_char;
 pub const LIGHT_SEM_NAME: *const c_char =  b"/light_sem".as_ptr() as *const c_char;
 pub const LIGHT_SAMPLING_PERIOD: Duration = Duration::from_secs(1);
@@ -39,6 +42,27 @@ pub struct CetiBatterySample{
     pub status: u16,
     pub protection_alert: u16,
 }
+
+#[derive(Debug, Clone, Copy)]
+#[repr(C)]
+pub struct CetiEcgSample{
+    pub sys_time_us: u64,
+    pub sample_index: u64,
+    pub error: i32,
+    pub rtc_time_s: u32,
+    pub ecg_reading: i32,
+    pub leads_off_reading_n: u16,
+    pub leads_off_reading_p: u16,
+}
+
+#[derive(Debug, Clone, Copy)]
+#[repr(C)]
+pub struct CetiEcgBuffer{
+    pub page: c_int,   // which buffer will be populated with new incoming data
+    pub sample: c_int, // which sample will be populated with new incoming data
+    pub lod_enabled: c_int,
+    pub data: [CetiEcgSample; ECG_BUFFER_LENGTH * ECG_NUM_BUFFER],
+} 
 
 #[repr(C)]
 pub struct CetiImuQuatSample{

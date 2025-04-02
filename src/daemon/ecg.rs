@@ -6,41 +6,17 @@ use std::thread::{sleep};
 use std::time::{Duration};
 use libc::{ftruncate, mmap, sem_open, sem_wait, shm_open};
 use libc::{O_RDWR, S_IRUSR, PROT_READ, MAP_SHARED};
-use libc::{c_char, c_int, c_long, c_longlong, off_t, sem_t};
+use libc::{c_char, off_t, sem_t};
+
+use super::ceti::*;
 
 const ECG_SHM_NAME: *const c_char = b"/ecg_shm\0".as_ptr() as *const c_char;
 const ECG_SAMPLE_SEM_NAME: *const c_char = b"/ecg_sample_sem\0".as_ptr() as *const c_char;
 const ECG_BLOCK_SEM_NAME: *const c_char = b"/ecg_page_sem\0".as_ptr() as *const c_char;
 
-const ECG_NUM_BUFFER: usize = 2;
-const ECG_BUFFER_LENGTH: usize = 1000;
-
 const UDP_PACKET_SIZE_MAX: usize = 1500;
+const SAMPLES_PER_PACKET : usize = UDP_PACKET_SIZE_MAX/size_of::<CetiEcgSample>();
 
-#[derive(Debug, Clone, Copy)]
-#[repr(C)]
-struct CetiEcgBuffer {
-    page: c_int,
-    sample: c_int,
-    lod_enabled: c_int,
-    sys_time_us: [c_longlong; ECG_BUFFER_LENGTH * ECG_NUM_BUFFER],
-    rtc_time_s: [c_int; ECG_BUFFER_LENGTH * ECG_NUM_BUFFER],
-    ecg_readings: [c_long; ECG_BUFFER_LENGTH * ECG_NUM_BUFFER],
-    leads_off_readings_p: [c_int; ECG_BUFFER_LENGTH * ECG_NUM_BUFFER],
-    leads_off_readings_n: [c_int; ECG_BUFFER_LENGTH * ECG_NUM_BUFFER],
-    sample_indexes: [c_longlong; ECG_BUFFER_LENGTH * ECG_NUM_BUFFER],
-}
-
-// reformatted data
-#[repr(C)]
-struct CetiEcgSample {
-    sys_time_us: c_longlong,
-    rtc_time_s: c_int,
-    ecg_readings: c_long,
-    leads_off_readings_p: c_int,
-    leads_off_readings_n: c_int,
-    sample_indexes: c_longlong,
-}
 
 pub fn tx_thread(
     dest_addr: Arc<Mutex<Vec<SocketAddr>>>,
@@ -70,8 +46,6 @@ pub fn tx_thread(
     let mut read_offset = 0;
     let mut write_offset = 0;
 
-    let mut count = 0;
-
     println!("starting loop");
     while !stop {
         //check if any udp sockets are subscribed to audio stream.
@@ -100,62 +74,37 @@ pub fn tx_thread(
                 // println!("{:?}", unsafe{(*ecg_addr).sample});
                 // println!("Offsets set to {:} and {:} [{:}][{:}]",read_offset, write_offset, page, sample);
             }
+
             
-            //calculate number of new samples in buffer 
-            let mut sample_count = if read_offset < write_offset {
-                write_offset - read_offset
-            } else {
-                write_offset + (ECG_BUFFER_LENGTH * ECG_NUM_BUFFER) - read_offset
-            };
-
-            println!("transforming data");
-            // transform ecg buffers into samples
-            let mut samples : Vec<CetiEcgSample> = Vec::with_capacity(sample_count); 
+            
             while read_offset != write_offset {
-                let current_sample = CetiEcgSample{
-                    sys_time_us: unsafe{(*ecg_addr).sys_time_us[read_offset]},
-                    rtc_time_s: unsafe{(*ecg_addr).rtc_time_s[read_offset]},
-                    ecg_readings: unsafe{(*ecg_addr).ecg_readings[read_offset]},
-                    leads_off_readings_p: unsafe{(*ecg_addr).leads_off_readings_p[read_offset]},
-                    leads_off_readings_n: unsafe{(*ecg_addr).leads_off_readings_n[read_offset]},
-                    sample_indexes: unsafe{(*ecg_addr).sample_indexes[read_offset]},
+                //calculate number of new samples in buffer
+                let mut sample_count = if read_offset < write_offset {
+                    write_offset - read_offset
+                } else {
+                    // only precess to end of buffer if wrapping.
+                    // Start of buffer will be picked up by next packet
+                    (ECG_BUFFER_LENGTH * ECG_NUM_BUFFER) - read_offset
                 };
-
-                samples.push(current_sample);
-                read_offset = ((read_offset) + 1) % (ECG_BUFFER_LENGTH * ECG_NUM_BUFFER);
-            }
-
-            // generate byte packages     
-            println!("transmitting data");
-            const SAMPLES_PER_PACKET : usize = UDP_PACKET_SIZE_MAX/size_of::<CetiEcgSample>();
-            let sample_iter = &mut samples.iter();
-            while sample_count != 0 {
-                let buffer : [u8; SAMPLES_PER_PACKET*size_of::<CetiEcgSample>()] = sample_iter
-                    .take(sample_count.min(SAMPLES_PER_PACKET))
-                    .flat_map(|sample| {
-                        let bytes = sample.sys_time_us.to_le_bytes().into_iter()
-                            .chain(sample.rtc_time_s.to_le_bytes().into_iter())
-                            .chain(sample.ecg_readings.to_le_bytes().into_iter())
-                            .chain(sample.leads_off_readings_p.to_le_bytes().into_iter())
-                            .chain(sample.leads_off_readings_p.to_le_bytes().into_iter())
-                            .chain(sample.sample_indexes.to_le_bytes().into_iter());
-                        return bytes;
-                    })
-                    .collect::<Vec<u8>>()
-                    .try_into()
-                    .unwrap();
-                if count == 0 {
-                    println!("{:?}", &buffer[..32]);
-                    count = 1;
-                }
+                sample_count =  sample_count.min(SAMPLES_PER_PACKET);
                 
+                
+                // send packet
+                println!("Generating packet");
+                let data = &unsafe{(*ecg_addr).data};
+                let ecg_read_ptr = (&data[read_offset]) as *const CetiEcgSample;
+                let packet : &[u8] = unsafe { std::slice::from_raw_parts(ecg_read_ptr as *const u8, size_of::<CetiEcgSample>()*sample_count)};
                 //send to all subscribed upd addresses
+                println!("transmitting data");
                 for dest_addr in dest_list.iter(){
-                    socket.send_to(&buffer, dest_addr)?;
+                    socket.send_to(packet, dest_addr)?;
                 }
-                sample_count = sample_count- sample_count.min(SAMPLES_PER_PACKET);
+
+                // advance read head
+                read_offset = (read_offset + sample_count) % (ECG_NUM_BUFFER * ECG_BUFFER_LENGTH);
             }
             break;
+
         } else {
             // there is noone subscribed to the udp stream
             if !paused {

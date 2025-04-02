@@ -86,7 +86,7 @@ fn main() -> std::io::Result<()> {
         let processed_audio : Vec<i16> = rx_buffer[4 .. 4 + packet_size as usize]
             .chunks_exact(2)
             .map(|b| {i16::from_be_bytes([b[0], b[1]])})
-            .map(|s| {s.saturating_mul(4)})
+            // .map(|s| {s.saturating_mul(4)})
             .collect();
         let audio_source = SamplesBuffer::new(3, 96000, processed_audio);
         
