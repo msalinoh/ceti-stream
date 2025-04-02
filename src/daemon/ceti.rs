@@ -7,7 +7,7 @@ pub const BATTERY_SEM_NAME : *const c_char = b"/battery_sem\0".as_ptr() as *cons
 pub const BATTERY_SAMPLING_PERIOD: Duration = Duration::from_secs(1);
 
 pub const ECG_NUM_BUFFER: usize = 2;
-pub const ECG_BUFFER_LENGTH: usize = 1000;
+pub const ECG_BUFFER_LENGTH: usize = 10000;
 
 pub const LIGHT_SHM_NAME: *const c_char =  b"/light_shm".as_ptr() as *const c_char;
 pub const LIGHT_SEM_NAME: *const c_char =  b"/light_sem".as_ptr() as *const c_char;
